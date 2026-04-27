@@ -36,6 +36,7 @@ const filterGravidade = document.querySelector("#filterGravidade");
 const filterTipo = document.querySelector("#filterTipo");
 const toast = document.querySelector("#toast");
 const importFile = document.querySelector("#importFile");
+const photosInput = document.querySelector("#photosInput");
 const detailsDialog = document.querySelector("#detailsDialog");
 const detailsTitle = document.querySelector("#detailsTitle");
 const detailsContent = document.querySelector("#detailsContent");
@@ -53,9 +54,10 @@ const iconTemplates = {
 };
 
 async function apiRequest(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: {
+    headers: isFormData ? (options.headers || {}) : {
       "Content-Type": "application/json",
       ...(options.headers || {})
     }
@@ -180,6 +182,7 @@ function resetForm() {
   fields.horaOcorrencia.value = nowTime();
   fields.status.value = "Aberto";
   fields.parada.value = "0";
+  photosInput.value = "";
   recordCode.textContent = "BO novo";
   formTitle.textContent = "Novo boletim";
 }
@@ -239,6 +242,7 @@ function applyRecordToForm(record) {
   fields.causaProvavel.value = record.causaProvavel || "";
   fields.acaoCorretiva.value = record.acaoCorretiva || "";
   fields.observacoes.value = record.observacoes || "";
+  photosInput.value = "";
   recordCode.textContent = record.codigo;
   formTitle.textContent = `Editando ${record.codigo}`;
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -300,6 +304,7 @@ function renderTable() {
         <td><span class="badge gravity-${slug(record.gravidade)}">${escapeHtml(record.gravidade || "-")}</span></td>
         <td><span class="badge status-${slug(record.status)}">${escapeHtml(record.status || "-")}</span></td>
         <td>${late ? '<span class="badge late">Atrasado</span>' : escapeHtml(formatDate(record.prazo))}</td>
+        <td>${Number(record.photoCount || 0)}</td>
         <td>
           <div class="row-actions">
             <button class="icon-btn" type="button" data-action="view" aria-label="Ver ${escapeHtml(record.codigo)}" title="Ver">${iconTemplates.view}</button>
@@ -338,6 +343,18 @@ async function upsertRecord(record) {
   return saved;
 }
 
+async function uploadPhotos(recordId, fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return [];
+
+  const formData = new FormData();
+  files.forEach((file) => formData.append("photos", file));
+  return apiRequest(`/records/${encodeURIComponent(recordId)}/photos`, {
+    method: "POST",
+    body: formData
+  });
+}
+
 function findRecord(id) {
   return records.find((record) => record.id === id);
 }
@@ -347,6 +364,35 @@ function detailItem(label, value, full = false) {
     <div class="detail-item ${full ? "full" : ""}">
       <span>${escapeHtml(label)}</span>
       <p>${escapeHtml(value || "-")}</p>
+    </div>
+  `;
+}
+
+function photoUrl(photo) {
+  if (!photo?.url) return "";
+  if (!photo.url.startsWith("/")) return photo.url;
+  if (API_BASE.startsWith("http")) return API_BASE.replace(/\/api$/, "") + photo.url;
+  return photo.url;
+}
+
+function renderPhotoGallery(record) {
+  const photos = record.photos || [];
+  if (!photos.length) {
+    return detailItem("Fotos", "Nenhuma foto anexada", true);
+  }
+
+  return `
+    <div class="detail-item full">
+      <span>Fotos</span>
+      <div class="photo-gallery">
+        ${photos.map((photo) => `
+          <figure class="photo-card">
+            <img src="${escapeHtml(photoUrl(photo))}" alt="${escapeHtml(photo.filename || "Foto da ocorrência")}">
+            <button class="icon-btn" type="button" data-photo-delete="${escapeHtml(photo.id)}" aria-label="Excluir foto" title="Excluir foto">${iconTemplates.trash}</button>
+            <figcaption class="photo-caption">${escapeHtml(photo.filename || "Foto")}</figcaption>
+          </figure>
+        `).join("")}
+      </div>
     </div>
   `;
 }
@@ -375,9 +421,12 @@ function showDetails(record) {
       ${detailItem("Causa provável", record.causaProvavel, true)}
       ${detailItem("Ação corretiva / preventiva", record.acaoCorretiva, true)}
       ${detailItem("Observações", record.observacoes, true)}
+      ${renderPhotoGallery(record)}
     </div>
   `;
-  detailsDialog.showModal();
+  if (!detailsDialog.open) {
+    detailsDialog.showModal();
+  }
 }
 
 function downloadFile(filename, content, type) {
@@ -479,7 +528,7 @@ async function importJsonFile(file) {
       });
       render();
       resetForm();
-      showToast("Dados importados para o banco SQLite.");
+      showToast("Dados importados para o banco.");
     } catch (error) {
       showToast(error.message || "Não foi possível importar o arquivo.");
     } finally {
@@ -502,8 +551,13 @@ form.addEventListener("submit", async (event) => {
   }
 
   try {
+    const selectedPhotos = Array.from(photosInput.files || []);
     const saved = await upsertRecord(getFormRecord());
-    showToast(`${saved.codigo} salvo no banco.`);
+    if (selectedPhotos.length) {
+      await uploadPhotos(saved.id, selectedPhotos);
+      await refreshRecords();
+    }
+    showToast(`${saved.codigo} salvo no banco${selectedPhotos.length ? " com fotos" : ""}.`);
     resetForm();
   } catch (error) {
     showToast(error.message || "Não foi possível salvar.");
@@ -531,6 +585,24 @@ editFromDetailsBtn.addEventListener("click", () => {
   if (record) {
     detailsDialog.close();
     applyRecordToForm(record);
+  }
+});
+
+detailsContent.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-photo-delete]");
+  if (!button) return;
+
+  const ok = window.confirm("Excluir esta foto do banco de dados?");
+  if (!ok) return;
+
+  try {
+    await apiRequest(`/photos/${encodeURIComponent(button.dataset.photoDelete)}`, { method: "DELETE" });
+    await refreshRecords();
+    const record = findRecord(activeDetailsId);
+    if (record) showDetails(record);
+    showToast("Foto excluída.");
+  } catch (error) {
+    showToast(error.message || "Não foi possível excluir a foto.");
   }
 });
 
@@ -592,7 +664,7 @@ async function init() {
     await loadRecords();
     await migrateLegacyLocalStorage();
     render();
-    showToast("Banco SQLite conectado.");
+    showToast("Banco conectado.");
   } catch {
     apiOnline = false;
     records = [];

@@ -260,6 +260,10 @@ textarea:focus {
   margin-bottom: 12px;
 }
 
+.photo-field input {
+  padding: 8px;
+}
+
 .filters {
   grid-template-columns: 1.6fr repeat(3, minmax(120px, 0.75fr));
   align-items: end;
@@ -437,6 +441,46 @@ tbody tr:last-child td {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.photo-gallery {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 10px;
+}
+
+.photo-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcf9;
+}
+
+.photo-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.photo-card .icon-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.photo-caption {
+  display: block;
+  padding: 7px 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .detail-item {

@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistema de Boletim de Ocorrências</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Indústria</p>
+        <h1>Boletim de Ocorrências</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" id="newRecordBtn" type="button">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </span>
+          Novo BO
+        </button>
+        <button class="btn" id="exportJsonBtn" type="button">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+          </span>
+          JSON
+        </button>
+        <button class="btn" id="exportCsvBtn" type="button">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg>
+          </span>
+          CSV
+        </button>
+        <button class="btn" id="importBtn" type="button">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+          </span>
+          Importar
+        </button>
+        <button class="btn" id="printBtn" type="button">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+          </span>
+          Imprimir
+        </button>
+        <input id="importFile" type="file" accept="application/json,.json" hidden>
+      </div>
+    </header>
+
+    <main>
+      <section class="metrics" aria-label="Indicadores">
+        <article class="metric">
+          <span>Total</span>
+          <strong id="metricTotal">0</strong>
+        </article>
+        <article class="metric">
+          <span>Abertos</span>
+          <strong id="metricOpen">0</strong>
+        </article>
+        <article class="metric">
+          <span>Em tratamento</span>
+          <strong id="metricProgress">0</strong>
+        </article>
+        <article class="metric">
+          <span>Alta/Crítica</span>
+          <strong id="metricCritical">0</strong>
+        </article>
+        <article class="metric">
+          <span>Atrasados</span>
+          <strong id="metricLate">0</strong>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <form class="form-panel" id="occurrenceForm" autocomplete="off">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Lançamento</p>
+              <h2 id="formTitle">Novo boletim</h2>
+            </div>
+            <span class="record-code" id="recordCode">BO novo</span>
+          </div>
+
+          <input type="hidden" id="recordId">
+
+          <div class="form-grid compact">
+            <label>
+              Data
+              <input id="dataOcorrencia" type="date" required>
+            </label>
+            <label>
+              Hora
+              <input id="horaOcorrencia" type="time" required>
+            </label>
+            <label>
+              Turno
+              <select id="turno" required>
+                <option value="">Selecione</option>
+                <option>A</option>
+                <option>B</option>
+                <option>C</option>
+                <option>Administrativo</option>
+              </select>
+            </label>
+            <label>
+              Status
+              <select id="status" required>
+                <option>Aberto</option>
+                <option>Em tratamento</option>
+                <option>Aguardando terceiro</option>
+                <option>Concluído</option>
+                <option>Cancelado</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              Unidade
+              <input id="unidade" type="text" placeholder="Ex.: Planta 1">
+            </label>
+            <label>
+              Setor
+              <input id="setor" type="text" required placeholder="Ex.: Produção">
+            </label>
+            <label>
+              Local exato
+              <input id="local" type="text" placeholder="Ex.: Linha 3">
+            </label>
+            <label>
+              Tipo
+              <select id="tipo" required>
+                <option value="">Selecione</option>
+                <option>Segurança</option>
+                <option>Meio ambiente</option>
+                <option>Qualidade</option>
+                <option>Manutenção</option>
+                <option>Produção</option>
+                <option>Logística</option>
+                <option>Patrimonial</option>
+                <option>Pessoas</option>
+                <option>Outros</option>
+              </select>
+            </label>
+            <label>
+              Gravidade
+              <select id="gravidade" required>
+                <option value="">Selecione</option>
+                <option>Baixa</option>
+                <option>Média</option>
+                <option>Alta</option>
+                <option>Crítica</option>
+              </select>
+            </label>
+            <label>
+              Parada (min)
+              <input id="parada" type="number" min="0" step="1" value="0">
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              Registrado por
+              <input id="registradoPor" type="text" required placeholder="Nome do responsável">
+            </label>
+            <label>
+              Envolvidos
+              <input id="envolvidos" type="text" placeholder="Nomes, matrículas ou equipe">
+            </label>
+            <label>
+              Responsável pela tratativa
+              <input id="responsavel" type="text" placeholder="Nome ou área">
+            </label>
+            <label>
+              Prazo
+              <input id="prazo" type="date">
+            </label>
+          </div>
+
+          <label>
+            Descrição da ocorrência
+            <textarea id="descricao" rows="4" required placeholder="Relate o que aconteceu, onde e como foi identificado."></textarea>
+          </label>
+
+          <label>
+            Ação imediata
+            <textarea id="acaoImediata" rows="3" placeholder="Medida adotada no momento da ocorrência."></textarea>
+          </label>
+
+          <div class="form-grid">
+            <label>
+              Causa provável
+              <textarea id="causaProvavel" rows="3" placeholder="Causa preliminar ou hipótese."></textarea>
+            </label>
+            <label>
+              Ação corretiva / preventiva
+              <textarea id="acaoCorretiva" rows="3" placeholder="Tratativa planejada para evitar recorrência."></textarea>
+            </label>
+          </div>
+
+          <label>
+            Observações
+            <textarea id="observacoes" rows="2"></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+              </span>
+              Salvar boletim
+            </button>
+            <button class="btn" id="clearFormBtn" type="button">Limpar</button>
+          </div>
+        </form>
+
+        <section class="list-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Registros</p>
+              <h2>Ocorrências</h2>
+            </div>
+            <span class="result-count" id="resultCount">0 itens</span>
+          </div>
+
+          <div class="filters">
+            <label class="search-field">
+              Buscar
+              <input id="searchInput" type="search" placeholder="Código, setor, descrição, responsável">
+            </label>
+            <label>
+              Status
+              <select id="filterStatus">
+                <option value="">Todos</option>
+                <option>Aberto</option>
+                <option>Em tratamento</option>
+                <option>Aguardando terceiro</option>
+                <option>Concluído</option>
+                <option>Cancelado</option>
+              </select>
+            </label>
+            <label>
+              Gravidade
+              <select id="filterGravidade">
+                <option value="">Todas</option>
+                <option>Baixa</option>
+                <option>Média</option>
+                <option>Alta</option>
+                <option>Crítica</option>
+              </select>
+            </label>
+            <label>
+              Tipo
+              <select id="filterTipo">
+                <option value="">Todos</option>
+                <option>Segurança</option>
+                <option>Meio ambiente</option>
+                <option>Qualidade</option>
+                <option>Manutenção</option>
+                <option>Produção</option>
+                <option>Logística</option>
+                <option>Patrimonial</option>
+                <option>Pessoas</option>
+                <option>Outros</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Data</th>
+                  <th>Setor</th>
+                  <th>Tipo</th>
+                  <th>Gravidade</th>
+                  <th>Status</th>
+                  <th>Prazo</th>
+                  <th class="actions-col">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="recordsTable"></tbody>
+            </table>
+            <div class="empty-state" id="emptyState">
+              Nenhuma ocorrência cadastrada.
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="details-dialog" id="detailsDialog">
+    <div class="dialog-head">
+      <div>
+        <p class="eyebrow">Ficha do boletim</p>
+        <h2 id="detailsTitle">BO</h2>
+      </div>
+      <button class="icon-btn" id="closeDetailsBtn" type="button" aria-label="Fechar">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="detailsContent" class="details-content"></div>
+    <div class="dialog-actions">
+      <button class="btn" id="printDetailsBtn" type="button">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+        </span>
+        Imprimir ficha
+      </button>
+      <button class="btn btn-primary" id="editFromDetailsBtn" type="button">Editar</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
